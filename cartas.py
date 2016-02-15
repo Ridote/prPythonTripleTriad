@@ -45,6 +45,18 @@ class Elemento:
 	def __eq__(self,y):
 		return self.value==y.value
 
+class Color:
+    COLORS = ['\033[96m','\033[95m', '\033[94m', '\033[92m', '\033[93m', '\033[91m', '\033[97m']
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    def __ini__(self):
+    	pass
+    def colorear(self, cadena, color):
+    	return self.COLORS[color] + cadena + self.ENDC
+    def mensajeError(self, cadena):
+    	return self.COLORS[5] + cadena + self.ENDC
+
 ##################################################################################################################################
 # CLASS CARTA ####################################################################################################################
 ##################################################################################################################################
@@ -69,7 +81,7 @@ class Carta:
 	def setPlayer(self,player):
 		self.player = player
 	def __str__(self):
-		return "("+str(self.top)+","+str(self.bottom)+","+str(self.right)+","+str(self.left)+","+str(self.player)+")"
+		return Color().colorear("("+str(self.top)+","+str(self.bottom)+","+str(self.right)+","+str(self.left)+")", self.player)
 
 ##################################################################################################################################
 # CLASS MANO #####################################################################################################################
@@ -83,42 +95,37 @@ class Mano:
 			self.anadirCarta(randomCarta(player))
 	def anadirCarta(self, carta):
 		self.cartas = self.cartas + [carta]
-		self.jugadas = self.jugadas + [False]
 	def getCarta(self, pos):
-		if(pos >= len(self.jugadas)):
+		if(pos >= len(self.cartas)):
 			return None
 		return self.cartas[pos]
 	def playCarta(self, pos):
-		if(pos >= len(self.jugadas)):
+		if(pos >= len(self.cartas)):
 			return False
-		self.jugadas[pos] = True
+		self.jugadas += [self.cartas[pos]]
+		del self.cartas[pos]
 		return True
-	def retrieveCarta(self, pos):
-		if(pos >= self.jugadas[pos]):
-			return False
-		self.cartas[pos] = None
-		self.jugadas[pos] = False
-		return True
-	def deepShow(self):
-		salida = ""
-		for x in range(0,len(self.cartas)):
-			salida += str(self.cartas[x]) + str(self.jugadas[x]) +  " / "
-		return salida.rsplit("/", 1)[0]
 	def __str__(self):
-		salida = ""
+		salida = "\tEn Mano:"
 		for x in range(0,len(self.cartas)):
-			if(self.jugadas[x] == False and self.cartas[x] != None):
-				salida += str(self.cartas[x]) + " / "
-		return salida.rsplit("/", 1)[0]
+			salida += "\t" + str(self.cartas[x])
+			if(x % 5 == 4):
+				salida += "\n\t\t"
+		salida += "\n\tJugadas: "
+		for x in range(0,len(self.jugadas)):
+			salida += "\t" + str(self.jugadas[x])
+			if(x % 5 == 4):
+				salida += "\n\t\t"
+		return salida[:-2]
 
 ##################################################################################################################################
 # CLASS JUGADOR ##################################################################################################################
 ##################################################################################################################################
 
 class Jugador:
-	def __init__(self, identificador = 0):
+	def __init__(self, identificador = 0, numCartas = 5):
 		self.identificador = identificador
-		self.mano = Mano()
+		self.mano = Mano(identificador, numCartas)
 	def getMano(self):
 		return mano
 	def anadirCarta(self, carta):
@@ -128,7 +135,7 @@ class Jugador:
 	def playCarta(self, pos):
 		return self.mano.playCarta(pos)
 	def __str__(self):
-		return "Jugador " + str(self.identificador) + ": " + str(self.mano)
+		return "Jugador " + str(self.identificador) + ":\n" + str(self.mano)
 
 ##################################################################################################################################
 # CLASS TABLERO ##################################################################################################################
@@ -143,36 +150,27 @@ class Tablero:
 			for y in range(0, tamanoTablero):
 				fila =  fila + [Carta(0,0,0,0,-1)]
 			self.celdas = self.celdas+[fila]
-
-	def setCarta(self, carta, x, y):
-		print("\n")
-		for x2 in range(0,3):
-			for y2 in range(0,3):
-				print(str(self.celdas[x2][y2]))
-			print()
-		print(str(self.tamanoTablero) + "\n")
-		print("(" + str(x) + ", " + str(y) + ") - Carta: " + str(carta))
-		print("\n")
-		if(x < self.tamanoTablero and x > 0 and y < self.tamanoTablero and y > 0):
-			if(self.celdas[x][y].getPlayer() != -1):
-				return False
-			self.celdas[x][y] = carta
-			return True
-		return False
-
 	def libre(self, x, y):
 			return self.celdas[x][y].getPlayer() == -1
-	def jugar(self, carta, x, y):
-		if(self.libre(x, y) != True):
-			return False
-		linea[x][y] = carta
-		return True
+	def posicionValida(self, x, y):
+		return (x < self.tamanoTablero and x >= 0 and y < self.tamanoTablero and y >= 0)
+	def setCarta(self, jugador, posCarta, x, y):
+		if(self.libre(x,y)):
+			carta = jugador.getCarta(posCarta)
+			if(jugador.playCarta(posCarta)):
+				self.celdas[x][y] = carta
+				return True
+		return False
 	def __str__(self):
-		salida = ""
+		salida = "\t0"
+		for y in range(1, self.tamanoTablero):
+			salida += "\t\t" + str(y)
+		salida += "\n"
 		for x in range(0, self.tamanoTablero):
+			salida += str(x) + "\t"
 			for y in range(0, self.tamanoTablero):
 				salida += str(self.celdas[x][y]) + ",\t"
-			salida = salida.rsplit(",\t",1)[0] + "\n"
+			salida = salida[:-2] + "\n"
 		return salida
 
 ##################################################################################################################################
@@ -185,56 +183,43 @@ class Juego:
 	def __init__(self, jugadores = 2, tamanoTablero = 3):
 		self.tamanoTablero = tamanoTablero
 		self.jugadores = []
-		self.tablero = Tablero(3)
+		self.tablero = Tablero(tamanoTablero)
 		self.turnos = 0
 		self.turno = 0
-		for x in range(0,jugadores):
-			self.jugadores += [Jugador(x)]
+		numCartas = tamanoTablero**2 / jugadores
+		if(numCartas*jugadores < tamanoTablero**2):
+			numCartas += 1
 
+		for x in range(0,jugadores):
+			self.jugadores += [Jugador(x, numCartas)]
 	def getTurno(self):
 		return self.turno
-
 	def iteracion(self, posCarta, posicionX, posicionY):
-		carta = self.jugadores[self.turno].getCarta(posCarta)
-		if(self.jugadores[self.turno].playCarta(posCarta)):
-			if(self.tablero.setCarta(carta,posicionX,posicionY)):
+		posicionValida = self.tablero.posicionValida(posicionX, posicionY)
+		if(posicionValida):
+			if(self.tablero.setCarta(self.jugadores[self.turno], posCarta, posicionX,posicionY)):
 				self.turno += 1
+				self.turnos += 1
 				if(self.turno >= len(self.jugadores)):
 					self.turno = 0
 			else:
-				return "\n*********************************************************************************\nNo se puede colocar una carta en (" + str(posicionX) + "," + str(posicionY) + "). Compruebe que no se haya salido\ndel tablero o que no este intentando colocar una carta sobre otra ya colocada\n*********************************************************************************\n"
+				return Color().mensajeError("\n*********************************************************************************\nEl indice facilitado no coincide con ninguna carta del jugador " + str(self.turno) + "\n*********************************************************************************\n")
 		else:
-			return "Indice de carta invalido"
+			return Color().mensajeError("\n*********************************************************************************\nHa habido un error debido a una posicion no valida en el tablero\n*********************************************************************************\n")
 	def finalizado(self):
-		return False#self.turnos == self.tamanoTablero**2
+		return self.turnos == self.tamanoTablero**2
 
 	def __str__(self):
-		salida = ""
+		salida = "\n\n******************************************** Turno " + str(self.turnos) + " ********************************************\n"
 		for x in self.jugadores:
-			salida += str(x) + "\n\n"
+			salida += str(x) + "'\033[0m'\n\n"
 		salida += str(self.tablero)
 		salida += "Turno del jugador: " + str(self.turno)
-		return salida
+		return salida + "\n"
 
 ##################################################################################################################################
 # AUXILIAR FUNCTIONS AND METHODS #################################################################################################
 ##################################################################################################################################
-
-def menu(tablero):
-	print("Introducir carta. Formato: TOP,BOTTOM,RIGHT,LEFT,PLAYER")
-	lectura = raw_input()
-	datos = lectura.split(',')
-	carta = Carta(datos[0],datos[1],datos[2],datos[3],datos[4])
-	print("introducir posicion")
-	lectura = raw_input()
-	posicion = lectura.split(',')
-	posicionX = int(posicion[0])
-	posicionY = int(posicion[1])
-	if(tablero.jugar(carta, posicionX, posicionY) == False):
-		print("POSICION INVALIDA")
-	print("\n")
-	print(tablero)
-	print("\n")
 
 def randomCarta(player,minimo=1,maximo=9):
 	return Carta(randint(minimo,maximo),randint(minimo,maximo),randint(minimo,maximo),randint(minimo,maximo),player)
@@ -243,14 +228,26 @@ def randomCarta(player,minimo=1,maximo=9):
 # MAIN ###########################################################################################################################
 ##################################################################################################################################
 
-juego = Juego(2,3)
+print("Introduce el numero de jugadores (max. 6)")
+numPlayers = raw_input()
+while(not numPlayers.isdigit() or int(numPlayers) > 6 or int(numPlayers) < 2):
+	print("Introduce el numero de jugadores (max. 6)")
+	numPlayers = raw_input()
+
+print("Introduce el ancho del tablero (max. 5, min. 3")
+tablero = raw_input()
+while(not tablero.isdigit() or int(tablero) > 5 or int(tablero) < 3):
+	print("Introduce el ancho del tablero (max. 5, min. 3")
+	tablero = raw_input()
+
+juego = Juego(int(numPlayers),int(tablero))
 
 while(juego.finalizado() == False):
 	print(str(juego))
 	print("Introduzca la carta que va a utilizar")
 	numCarta = raw_input()
 	if(numCarta.isdigit()):
-		print("Introduzca la posicion. Ej: 1,2")
+		print("Introduzca la posicion. Ej: 1,2)")
 		posicion = raw_input()
 		try:
 			coordenadas = posicion.split(',')
@@ -260,13 +257,10 @@ while(juego.finalizado() == False):
 			if(resultado != None):
 				print("\n" + resultado + "\n")
 		except ValueError as excepcion:
-			print "\nFormato de posicion incorrecta, por favor introduzca dos numeros separados por una coma. + " + excepcion + "\n"
+			print(Color().mensajeError("\n\n************************************************************************************************\nFormato de posicion incorrecta, por favor introduzca dos numeros separados por una coma.\n************************************************************************************************\n"))
 	else:
-		print("\nCarta incorrecta...\n")
-	
-
-
-
-
+		print(Color().mensajeError("\n\n***********************************************************\nFormato de carta incorrecta. Introduzca un digito\n***********************************************************\n"))
+print("\n\n" + str(juego) + "\n\n")
+print("\n\n JUEGO FINALIZADO \n\n")
 
 
