@@ -84,6 +84,10 @@ class Mano:
 	def anadirCarta(self, carta):
 		self.cartas = self.cartas + [carta]
 		self.jugadas = self.jugadas + [False]
+	def getCarta(self, pos):
+		if(pos >= len(self.jugadas)):
+			return None
+		return self.cartas[pos]
 	def playCarta(self, pos):
 		if(pos >= len(self.jugadas)):
 			return False
@@ -119,8 +123,10 @@ class Jugador:
 		return mano
 	def anadirCarta(self, carta):
 		mano.anadirCarta(carta)
+	def getCarta(self, pos):
+		return self.mano.getCarta(pos)
 	def playCarta(self, pos):
-		return playCarta(pos)
+		return self.mano.playCarta(pos)
 	def __str__(self):
 		return "Jugador " + str(self.identificador) + ": " + str(self.mano)
 
@@ -137,6 +143,22 @@ class Tablero:
 			for y in range(0, tamanoTablero):
 				fila =  fila + [Carta(0,0,0,0,-1)]
 			self.celdas = self.celdas+[fila]
+
+	def setCarta(self, carta, x, y):
+		print("\n")
+		for x2 in range(0,3):
+			for y2 in range(0,3):
+				print(str(self.celdas[x2][y2]))
+			print()
+		print(str(self.tamanoTablero) + "\n")
+		print("(" + str(x) + ", " + str(y) + ") - Carta: " + str(carta))
+		print("\n")
+		if(x < self.tamanoTablero and x > 0 and y < self.tamanoTablero and y > 0):
+			if(self.celdas[x][y].getPlayer() != -1):
+				return False
+			self.celdas[x][y] = carta
+			return True
+		return False
 
 	def libre(self, x, y):
 			return self.celdas[x][y].getPlayer() == -1
@@ -159,7 +181,7 @@ class Tablero:
 
 class Juego:
 	#turno <- turno del jugador que viene ahora
-	#turnos <- número de turnos hasta el momento
+	#turnos <- numero de turnos hasta el momento
 	def __init__(self, jugadores = 2, tamanoTablero = 3):
 		self.tamanoTablero = tamanoTablero
 		self.jugadores = []
@@ -169,14 +191,29 @@ class Juego:
 		for x in range(0,jugadores):
 			self.jugadores += [Jugador(x)]
 
-	def finalizado():
-		return self.turnos == self.tamanoTablero**2
+	def getTurno(self):
+		return self.turno
+
+	def iteracion(self, posCarta, posicionX, posicionY):
+		carta = self.jugadores[self.turno].getCarta(posCarta)
+		if(self.jugadores[self.turno].playCarta(posCarta)):
+			if(self.tablero.setCarta(carta,posicionX,posicionY)):
+				self.turno += 1
+				if(self.turno >= len(self.jugadores)):
+					self.turno = 0
+			else:
+				return "\n*********************************************************************************\nNo se puede colocar una carta en (" + str(posicionX) + "," + str(posicionY) + "). Compruebe que no se haya salido\ndel tablero o que no este intentando colocar una carta sobre otra ya colocada\n*********************************************************************************\n"
+		else:
+			return "Indice de carta invalido"
+	def finalizado(self):
+		return False#self.turnos == self.tamanoTablero**2
 
 	def __str__(self):
 		salida = ""
 		for x in self.jugadores:
 			salida += str(x) + "\n\n"
 		salida += str(self.tablero)
+		salida += "Turno del jugador: " + str(self.turno)
 		return salida
 
 ##################################################################################################################################
@@ -207,16 +244,29 @@ def randomCarta(player,minimo=1,maximo=9):
 ##################################################################################################################################
 
 juego = Juego(2,3)
-print(str(juego))
 
-
-
-'''
 while(juego.finalizado() == False):
-	opcion = raw_input()
-	if(opcion == "salir"):
-		salir = True	
-'''
+	print(str(juego))
+	print("Introduzca la carta que va a utilizar")
+	numCarta = raw_input()
+	if(numCarta.isdigit()):
+		print("Introduzca la posicion. Ej: 1,2")
+		posicion = raw_input()
+		try:
+			coordenadas = posicion.split(',')
+			posicionX = int(coordenadas[0])
+			posicionY = int(coordenadas[1])
+			resultado = juego.iteracion(int(numCarta), posicionX, posicionY)
+			if(resultado != None):
+				print("\n" + resultado + "\n")
+		except ValueError as excepcion:
+			print "\nFormato de posicion incorrecta, por favor introduzca dos numeros separados por una coma. + " + excepcion + "\n"
+	else:
+		print("\nCarta incorrecta...\n")
+	
+
+
+
 
 
 
