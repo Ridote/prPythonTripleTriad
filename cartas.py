@@ -57,6 +57,17 @@ class Color:
     def mensajeError(self, cadena):
     	return self.COLORS[5] + cadena + self.ENDC
 
+class Lado:
+    ARRIBA = (1,0)
+    ABAJO = (-1,0)
+    IZQUIERDA = (0,-1)
+    DERECHA = (0,1)
+
+    def __ini__(self):
+    	pass
+    def getLados(self):
+    	return [ARRIBA, ABAJO, IZQUIERDA, DERECHA]
+
 ##################################################################################################################################
 # CLASS CARTA ####################################################################################################################
 ##################################################################################################################################
@@ -71,7 +82,7 @@ class Carta:
 	def getTop(self):
 		return self.top
 	def getBottom(self):
-		return bottom
+		return self.bottom
 	def getRight(self):
 		return self.right
 	def getLeft(self):
@@ -145,11 +156,14 @@ class Tablero:
 	def __init__(self, tamanoTablero = 3):
 		self.tamanoTablero = tamanoTablero
 		self.celdas = []
+
 		for x in range(0, tamanoTablero):
 			fila = []
 			for y in range(0, tamanoTablero):
 				fila =  fila + [Carta(0,0,0,0,-1)]
 			self.celdas = self.celdas+[fila]
+	def flipable (self, jugador, x ,y):
+		return (not self.libre(x,y)) and (jugador != self.celdas[x][y].getPlayer())
 	def libre(self, x, y):
 			return self.celdas[x][y].getPlayer() == -1
 	def posicionValida(self, x, y):
@@ -161,6 +175,41 @@ class Tablero:
 				self.celdas[x][y] = carta
 				return True
 		return False
+
+	def getCarta(self, x, y):
+		if(self.posicionValida(x,y)):
+			return self.celdas[x][y]
+		return None
+
+	def flip(self, jugador, x, y, cadena = False):
+		if(posicionValida(x,y) and flipable(jugador, x, y)):
+			self.celdas[x][y].setPlayer(jugador)
+			if(cadena):
+				flip(jugador, x,y,cadena)
+				flip(jugador, x-1,y,cadena)
+				flip(jugador, x,y+1,cadena)
+				flip(jugador, x,y-1,cadena)
+
+	def atacar(self, cartaAtacante, ladoOrigenAtacante, x, y):
+		if(self.posicionValida(x,y)):
+			cartaAtacada = self.celdas[x][y]
+			if(self.flipable(cartaAtacada,x,y)):
+				if(ladoOrigenAtacante == Lado.ARRIBA):
+					ataque = cartaAtacante.getBottom()
+					defensa = cartaAtacada.getTop()
+				elif(ladoOrigenAtacante == Lado.ABAJO):
+					ataque = cartaAtacante.getTop()
+					defensa = cartaAtacada.getBottom()
+				elif(ladoOrigenAtacante == Lado.IZQUIERDA):
+					ataque = cartaAtacante.getRight()
+					defensa = cartaAtacada.getLeft()
+				elif(ladoOrigenAtacante == Lado.DERECHA):
+					ataque = cartaAtacante.getLeft()
+					defensa = cartaAtacada.getRight()
+				else:
+					print("ERROR FATALISIMO, EN EL FLIP ENVIAS UN LADO QUE NO EXISTE JEJE ANORMAL")
+				if(ataque > defensa):
+					cartaAtacada.setPlayer(cartaAtacante.getPlayer())
 	def __str__(self):
 		salida = "\t0"
 		for y in range(1, self.tamanoTablero):
@@ -198,6 +247,11 @@ class Juego:
 		posicionValida = self.tablero.posicionValida(posicionX, posicionY)
 		if(posicionValida):
 			if(self.tablero.setCarta(self.jugadores[self.turno], posCarta, posicionX,posicionY)):
+				atacante = self.tablero.getCarta(posicionX, posicionY)
+				self.tablero.atacar(atacante, Lado.ARRIBA, posicionX+1, posicionY)
+				self.tablero.atacar(atacante, Lado.ABAJO, posicionX-1, posicionY)
+				self.tablero.atacar(atacante, Lado.IZQUIERDA, posicionX, posicionY+1)
+				self.tablero.atacar(atacante, Lado.DERECHA, posicionX, posicionY-1)
 				self.turno += 1
 				self.turnos += 1
 				if(self.turno >= len(self.jugadores)):
@@ -234,7 +288,7 @@ while(not numPlayers.isdigit() or int(numPlayers) > 6 or int(numPlayers) < 2):
 	print("Introduce el numero de jugadores (max. 6)")
 	numPlayers = raw_input()
 
-print("Introduce el ancho del tablero (max. 5, min. 3")
+print("Introduce el ancho del tablero (max. 5, min. 3)")
 tablero = raw_input()
 while(not tablero.isdigit() or int(tablero) > 5 or int(tablero) < 3):
 	print("Introduce el ancho del tablero (max. 5, min. 3")
